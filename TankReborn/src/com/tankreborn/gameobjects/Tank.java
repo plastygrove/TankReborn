@@ -1,94 +1,77 @@
 package com.tankreborn.gameobjects;
 
-import java.util.UUID;
-
-import org.newdawn.slick.Graphics;
+import org.jbox2d.collision.shapes.PolygonShape;
+import org.jbox2d.common.Vec2;
+import org.jbox2d.dynamics.BodyDef;
+import org.jbox2d.dynamics.BodyType;
+import org.jbox2d.dynamics.FixtureDef;
+import org.jbox2d.dynamics.World;
 import org.newdawn.slick.Image;
 import org.newdawn.slick.SlickException;
-import org.newdawn.slick.geom.Vector2f;
 
-public class Tank implements MovingObject {
+import com.tankreborn.helpers.Constants.DIRECTION;
+import com.tankreborn.helpers.Util;
 
-	private Image image;
-	private Vector2f position;
-	private float speed = 0.2f;
-	private float speedMultiplier = 1.0f;
+public class Tank extends GameObject {
+
 	private int maxBullets = 20;
 	private int currentBullets = 0;
-	private DIRECTION currentDirection = DIRECTION.UP;
-	public UUID id;
+	
+	private DIRECTION currentDirection;
+	private float bulletSpeed = 1.0f;
 
-	public Tank(Image image, Vector2f position, float speedMultiplier) {
+	public Tank(World world, Image image, Vec2 position, float speedMultiplier) {
 		this.image = image;
 		this.position = position;
 		this.speedMultiplier = speedMultiplier;
-		id = UUID.randomUUID();
+		boundingHeight = Util.getInstance().pixelsToMetres(image.getHeight());
+		boundingWidth = Util.getInstance().pixelsToMetres(image.getWidth());
+
+		initialize(world);
+		currentDirection=DIRECTION.UP;
+		
 	}
 
-	public Tank() throws SlickException {
+	public Tank(World world) throws SlickException {
 		image = new Image("data/images/tank.png");
-		position = new Vector2f(340, 540);
+		position = new Vec2(0, -5);
+		boundingHeight = Util.getInstance().pixelsToMetres(image.getHeight());
+		boundingWidth = Util.getInstance().pixelsToMetres(image.getWidth());
+
+		initialize(world);
+		currentDirection=DIRECTION.UP;
 	}
 
-	public float getSpeedMultiplier() {
-		return speedMultiplier;
-	}
-
-	public void setSpeedMultiplier(float speedMultiplier) {
-		this.speedMultiplier = speedMultiplier;
-	}
-
-	@Override
-	public void render(Graphics g) {
-		image.draw(position.x, position.y);
-	}
-
-	@Override
-	public Vector2f getPosition() {
-		return position;
-	}
-
-	@Override
-	public void setPosition(Vector2f position) {
-		this.position = position;
-	}
-
-	/**
-	 * Specify the direction to move
-	 * 
-	 * @param dir
-	 *            Tank.DIRECTION - the direction to move
-	 * @param distance
-	 *            Number of paces to move, will move default pace if 0 or negative
-	 */
-	public void move(DIRECTION dir, float delta) {
-		float distance = speed * speedMultiplier * delta;
-		currentDirection = dir;
-		switch (currentDirection) {
-		case UP:
-			position.y -= distance;
-			break;
-		case DOWN:
-			position.y += distance;
-			break;
-		case LEFT:
-			position.x -= distance;
-			break;
-		case RIGHT:
-			position.x += distance;
-			break;
-		}
-
-	}
-
-	public Bullet fire() throws SlickException {
+	public Bullet fire(World world) throws SlickException {
 		if (currentBullets >= maxBullets)
 			return null;
 
-		Bullet bullet = new Bullet(this);
+		Bullet bullet = new Bullet(world, this);
+		bullet.setSpeedMultiplier(2.0f);
+		bullet.applyLinearVelocity(getBulletVelocity());
 		currentBullets++;
 		return bullet;
 
+	}
+	
+	private Vec2 getBulletVelocity(){
+		Vec2 bulletVelocity = new Vec2();
+		switch(currentDirection){
+		case LEFT:
+			bulletVelocity.x = -bulletSpeed;
+			break;
+		case RIGHT:
+			bulletVelocity.x = bulletSpeed;
+			break;
+		case UP:
+			bulletVelocity.y = bulletSpeed;
+			break;
+		case DOWN:
+			bulletVelocity.y = -bulletSpeed;
+			break;
+		}
+		
+		return bulletVelocity;
 	}
 
 	public int getMaxBullets() {
@@ -99,24 +82,47 @@ public class Tank implements MovingObject {
 		this.maxBullets = maxBullets;
 	}
 
+	@Override
+	public boolean equals(Object obj) {
+		if (obj == null)
+			return false;
+
+		if (!(obj instanceof Tank))
+			return false;
+
+		Tank that = (Tank) obj;
+		return this.id.equals(that.id);
+	}
+
+
+	@Override
+	protected BodyDef getBodyDef() {
+		BodyDef bd = new BodyDef();
+		bd.position = position;
+		bd.type = BodyType.DYNAMIC;
+		return bd;
+	}
+
+	@Override
+	protected FixtureDef getFixtureDef() {
+		FixtureDef fd = new FixtureDef();
+		PolygonShape shape = new PolygonShape();
+		shape.setAsBox(boundingWidth / 2, boundingHeight / 2);
+		fd.shape = shape;
+		fd.isSensor = true;//Don't perform collisions, only detect them
+		return fd;
+	}
+
+	public void applyLinearVelocity(Vec2 velocity) {// TODO Fix this
+		body.setLinearVelocity(velocity.mul(speedMultiplier));
+	}
+
 	public DIRECTION getCurrentDirection() {
 		return currentDirection;
 	}
 
 	public void setCurrentDirection(DIRECTION currentDirection) {
 		this.currentDirection = currentDirection;
-	}
-
-	@Override
-	public boolean equals(Object obj) {
-		if(obj == null)
-			return false;
-		
-		if(!(obj instanceof Tank))
-			return false;
-		
-		Tank that = (Tank) obj;
-		return this.id.equals(that.id);
 	}
 
 }

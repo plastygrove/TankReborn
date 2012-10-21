@@ -1,21 +1,25 @@
 package com.tankreborn.gameobjects;
 
-import org.newdawn.slick.Graphics;
+import org.jbox2d.collision.shapes.PolygonShape;
+import org.jbox2d.common.Vec2;
+import org.jbox2d.dynamics.BodyDef;
+import org.jbox2d.dynamics.BodyType;
+import org.jbox2d.dynamics.FixtureDef;
+import org.jbox2d.dynamics.World;
 import org.newdawn.slick.Image;
 import org.newdawn.slick.SlickException;
-import org.newdawn.slick.geom.Vector2f;
 
-public class Wall implements GameObject {
+import com.tankreborn.helpers.Util;
 
-	private Image image;
+public class Wall extends GameObject {
+
 	private int strength = 2;// Number of hits to destroy completely
-	private Vector2f position;
 	public enum WALL_TYPE{
 		BRICK, ICE, GRASS, BOUNDARY
 	}
 	private WALL_TYPE type;
 	
-	public Wall(WALL_TYPE type, Vector2f position) throws SlickException {
+	public Wall(World world, WALL_TYPE type, Vec2 position) throws SlickException {
 		this.type = type;
 		this.position = position;
 		switch(type){
@@ -26,21 +30,11 @@ public class Wall implements GameObject {
 			
 			break;
 		}
-	}
-
-	@Override
-	public void render(Graphics g) {
-		image.draw(position.x, position.y);
-	}
-
-	@Override
-	public Vector2f getPosition() {
-		return position;
-	}
-
-	@Override
-	public void setPosition(Vector2f position) {
-
+		
+		boundingWidth = Util.getInstance().pixelsToMetres(image.getWidth());
+		boundingHeight = Util.getInstance().pixelsToMetres(image.getHeight());
+		
+		initialize(world);
 	}
 
 	public WALL_TYPE getType() {
@@ -58,6 +52,23 @@ public class Wall implements GameObject {
 	public void destroy() throws SlickException{
 		image.destroy();
 		
+	}
+
+	@Override
+	protected BodyDef getBodyDef() {
+		BodyDef bd = new BodyDef();
+		bd.position = position;
+		bd.type = BodyType.DYNAMIC;
+		return bd;
+	}
+
+	@Override
+	protected FixtureDef getFixtureDef() {
+		FixtureDef fd = new FixtureDef();
+		PolygonShape shape = new PolygonShape();
+		shape.setAsBox(boundingWidth/2, boundingHeight/2);
+		fd.shape = shape;
+		return fd;
 	}
 
 }

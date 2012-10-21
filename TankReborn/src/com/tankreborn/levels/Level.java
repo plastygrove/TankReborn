@@ -7,28 +7,34 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.HashMap;
+import java.util.List;
 
-import org.newdawn.slick.Graphics;
+import org.jbox2d.dynamics.World;
 import org.newdawn.slick.SlickException;
 
+import com.tankreborn.gameobjects.GameObject;
 import com.tankreborn.gameobjects.Tank;
 
 public class Level {
 	private WallMap wallMap;
 	private Tank[] playerTanks;
 	private Tank[] enemyTanks;
+	private List<GameObject> allObjects;
+	private World world;
 
-	private Level(WallMap wallMap) {
+	private Level(World world, WallMap wallMap, List<GameObject> allObj) {
+		this.allObjects = allObj;
 		this.wallMap = wallMap;
+		this.world = world;
 	};
 
-	public static Level loadLevel(String path) throws SlickException {
-		HashMap<String, Object> optionsCache = parseFile(path);
-		Level level = new Level((WallMap)optionsCache.get("wall_map"));
+	public static Level loadLevel(World world, String path, List<GameObject> allObjects) throws SlickException {
+		HashMap<String, Object> optionsCache = parseFile(world, allObjects, path);
+		Level level = new Level(world, (WallMap)optionsCache.get("wall_map"), allObjects);
 		return level;
 	}
 
-	private static HashMap<String, Object> parseFile(String path) throws SlickException {
+	private static HashMap<String, Object> parseFile(World world, List<GameObject> allObjects, String path) throws SlickException {
 		HashMap<String, Object> options = new HashMap<>();
 		BufferedReader br;
 
@@ -56,12 +62,12 @@ public class Level {
 							break;
 						String[] lineArray = mapLine.split(",");
 						for (int j = 0; j < lineArray.length; j++) {
-							System.out.print(lineArray[j]);
+//							System.out.print(lineArray[j]);
 							wallNumMatrix[i][j] = Integer.parseInt(lineArray[j]);
 						}
-						System.out.println("\n");
+//						System.out.println("\n");
 					}
-					WallMap loadedMap = new WallMap(wallNumMatrix, wallWidth, wallHeight, maxInRow, maxInCol);
+					WallMap loadedMap = new WallMap(world, allObjects, wallNumMatrix, wallWidth, wallHeight, maxInRow, maxInCol);
 					options.put("wall_map", loadedMap);
 				}
 					break;
@@ -74,6 +80,7 @@ public class Level {
 					break;
 				}
 			}
+			br.close();
 		} catch (FileNotFoundException e) {
 			throw new SlickException("Couldn't find level file", e);
 		} catch (IOException e) {
@@ -83,8 +90,8 @@ public class Level {
 		return options;
 	}
 	
-	public void render(Graphics g){
-		wallMap.render(g);
+	public WallMap getWallMap() {
+		return wallMap;
 	}
 
 }

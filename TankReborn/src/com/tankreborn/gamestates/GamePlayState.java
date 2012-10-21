@@ -3,6 +3,8 @@ package com.tankreborn.gamestates;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.jbox2d.common.Vec2;
+import org.jbox2d.dynamics.World;
 import org.newdawn.slick.GameContainer;
 import org.newdawn.slick.Graphics;
 import org.newdawn.slick.Input;
@@ -10,10 +12,14 @@ import org.newdawn.slick.SlickException;
 import org.newdawn.slick.state.BasicGameState;
 import org.newdawn.slick.state.StateBasedGame;
 
+import com.tankreborn.Camera;
+import com.tankreborn.PhysicsHandler;
 import com.tankreborn.gameobjects.Bullet;
-import com.tankreborn.gameobjects.MovingObject.DIRECTION;
+import com.tankreborn.gameobjects.GameObject;
 import com.tankreborn.gameobjects.Tank;
+import com.tankreborn.helpers.Constants;
 import com.tankreborn.helpers.Debugger;
+import com.tankreborn.helpers.Constants.DIRECTION;
 import com.tankreborn.levels.Level;
 
 public class GamePlayState extends BasicGameState {
@@ -26,6 +32,10 @@ public class GamePlayState extends BasicGameState {
 	private boolean isActionKeyPressed = false;
 	private float actionDelay = 0.0f;
 	private Level level;
+	private List<GameObject> allObjects;
+	private World world;
+	private Camera camera;
+	private PhysicsHandler handler;
 
 	public GamePlayState(int id) {
 		stateId = id;
@@ -35,23 +45,29 @@ public class GamePlayState extends BasicGameState {
 	@Override
 	public void enter(GameContainer container, StateBasedGame game) throws SlickException {
 		super.enter(container, game);
-		level = Level.loadLevel("data/levels/level1.dat");
+		
+		
 	}
 
 	@Override
 	public void init(GameContainer container, StateBasedGame game) throws SlickException {
-		playerTank = new Tank();
+		world = new World(new Vec2(0f,0f), false);
+		allObjects = new ArrayList<>();
+		camera = new Camera(new Vec2(0f, 0f), Constants.CAMERA_VIEW_WIDTH, Constants.CAMERA_VIEW_HEIGHT);
+		camera.setCameraInvert(true);
+		handler = new PhysicsHandler();
+		playerTank = new Tank(world);
+		playerTank.setSpeedMultiplier(1.0f);
+		allObjects.add(playerTank);
+		
+		level = Level.loadLevel(world, "data/levels/level1.dat", allObjects);
+		
 		d = Debugger.getInstance();
 	}
 
 	@Override
 	public void render(GameContainer container, StateBasedGame game, Graphics g) throws SlickException {
-		d.render(g);
-		playerTank.render(g);
-		for (Bullet bullet : bullets) {
-			bullet.render(g);
-		}
-		level.render(g);
+		camera.render(g, allObjects);
 	}
 
 	@Override
@@ -77,33 +93,47 @@ public class GamePlayState extends BasicGameState {
 
 	@Override
 	public void update(GameContainer container, StateBasedGame game, int delta) throws SlickException {
-
+		handler.simulate(world, allObjects, delta*.005f);
+		
+		Vec2 velocity = new Vec2();
+		float speed = 1.0f;
+		DIRECTION dir = null;
 		switch (keyPressed) {
 		case Input.KEY_UP:
-			playerTank.move(DIRECTION.UP, delta);
+			dir = DIRECTION.UP;
+			velocity.y = speed;
 			break;
 		case Input.KEY_DOWN:
-			playerTank.move(DIRECTION.DOWN, delta);
+			dir=DIRECTION.DOWN;
+			velocity.y = -speed;
 			break;
 		case Input.KEY_LEFT:
-			playerTank.move(DIRECTION.LEFT, delta);
+			dir=DIRECTION.LEFT;
+			velocity.x = -speed;
 			break;
 		case Input.KEY_RIGHT:
-			playerTank.move(DIRECTION.RIGHT, delta);
+			dir=DIRECTION.RIGHT;
+			velocity.x = speed;
 			break;
 		case Input.KEY_SPACE:
 			if (actionDelay>0 && actionDelay < 250)
 				break;
 			else {
-				Bullet bullet = playerTank.fire();
-				if (bullet != null)
+				Bullet bullet = playerTank.fire(world);
+				if (bullet != null){
 					bullets.add(bullet);
+					allObjects.add(bullet);
+				}
 				actionDelay = 0;//Reset counter after firing
 			}
 			break;
 		default:
 
 		}
+		playerTank.applyLinearVelocity(velocity);
+		if(dir!=null)
+			playerTank.setCurrentDirection(dir);
+		
 		if (isActionKeyPressed)
 			actionDelay += delta;
 		updateBullets(container, game, delta);
@@ -111,7 +141,7 @@ public class GamePlayState extends BasicGameState {
 
 	private void updateBullets(GameContainer container, StateBasedGame game, int delta) {
 		for (Bullet bullet : bullets) {
-			bullet.move(null, delta);
+//			bullet.move(null, delta);
 		}
 	}
 

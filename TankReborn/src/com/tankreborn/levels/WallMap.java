@@ -1,33 +1,32 @@
 package com.tankreborn.levels;
 
-import java.util.HashMap;
+import java.util.List;
 
+import org.jbox2d.common.Vec2;
+import org.jbox2d.dynamics.World;
 import org.newdawn.slick.Graphics;
 import org.newdawn.slick.SlickException;
-import org.newdawn.slick.geom.Vector2f;
 
+import com.tankreborn.gameobjects.GameObject;
 import com.tankreborn.gameobjects.Wall;
 import com.tankreborn.gameobjects.Wall.WALL_TYPE;
+import com.tankreborn.helpers.Util;
 
 public class WallMap {
-	private final int mapHeight=550;
-	private final int mapWidth=750;
-//	private int wallWidth;
-//	private int wallHeight;
 	private Wall[][] wallMatrix;
 	
-	public WallMap(int[][] numMatrix, int wallWidth, int wallHeight, int maxInRow, int maxInCol) throws SlickException{
+	public WallMap(World world, List<GameObject> allObjects, int[][] numMatrix, int wallWidth, int wallHeight, int maxInRow, int maxInCol) throws SlickException{
 		wallMatrix = new Wall[wallWidth][wallHeight];
-		generateWallMap(numMatrix, wallWidth, wallHeight, maxInRow, maxInCol);
+		generateWallMap(world, allObjects, numMatrix, wallWidth, wallHeight, maxInRow, maxInCol);
 	}
 	
-	private void generateWallMap(int[][] numMatrix, int wallWidth, int wallHeight, int maxInRow, int maxInCol) throws SlickException{
+	private void generateWallMap(World world, List<GameObject> allObjects, int[][] numMatrix, int wallWidth, int wallHeight, int maxInRow, int maxInCol) throws SlickException{
 		//Uncomment this later. Commented it out for now because it's a nuisance in testing
 		/*if(maxInRow*wallWidth > mapWidth || maxInCol*wallHeight>mapHeight){
 			throw new SlickException("Map cannot fit on screen");
 		}*/
-		int xPos = 40;
-		int yPos = 40;
+		int xPos = -7;
+		int yPos = 6;
 		for(int i=0; i<numMatrix.length; i++){
 			for(int j=0; j<numMatrix[i].length; j++){
 				Wall newWall = null;
@@ -36,7 +35,8 @@ public class WallMap {
 					
 					break;
 				case 1: //Brick wall
-					newWall = new Wall(WALL_TYPE.BRICK, new Vector2f(xPos+j*wallWidth, yPos+i*wallHeight));
+					newWall = new Wall(world, WALL_TYPE.BRICK, new Vec2(xPos+j*Util.getInstance().pixelsToMetres(wallWidth), yPos-i*Util.getInstance().pixelsToMetres(wallHeight)));
+					allObjects.add(newWall);
 					break;
 				default:
 					
@@ -47,29 +47,47 @@ public class WallMap {
 		}
 	}
 	
-	public void render(Graphics g, HashMap<Integer, Integer> wallRenderMap) throws SlickException{
-		for (Integer i : wallRenderMap.keySet()) {
-			Wall wall = wallMatrix[i][wallRenderMap.get(i)];
-			
-			if(wall == null){
-				continue;
-			} else if(wall.getStrength() <= 0){
-				wall.destroy();
-				wallMatrix[i][wallRenderMap.get(i)] = null;//Free resources
-			} else {
-				wall.render(g);
+//	public void render(Graphics g, HashMap<Integer, Integer> wallRenderMap) throws SlickException{
+//		for (Integer i : wallRenderMap.keySet()) {
+//			Wall wall = wallMatrix[i][wallRenderMap.get(i)];
+//			
+//			if(wall == null){
+//				continue;
+//			} else if(wall.getStrength() <= 0){
+//				wall.destroy();
+//				wallMatrix[i][wallRenderMap.get(i)] = null;//Free resources
+//			} else {
+////				wall.render(g);//TODO
+//			}
+//		}
+//	}
+//	
+//	public void render(Graphics g){
+//		for(int i=0; i<wallMatrix.length; i++){
+//			for(int j=0; j<wallMatrix[i].length; j++){
+//				Wall wall = wallMatrix[i][j];
+//				if(wall!=null){
+////					wall.render(g);//TODO
+//				}
+//			}
+//		}
+//	}
+
+	public void add(List<GameObject> allObjects) {
+		for (int i = 0; i < wallMatrix.length; i++) {
+			for(int j=0; j<wallMatrix[i].length; j++){
+				allObjects.add(wallMatrix[i][j]);
 			}
+			
 		}
 	}
 	
-	public void render(Graphics g){
-		for(int i=0; i<wallMatrix.length; i++){
+	public void render(Graphics g, Vec2 offset){
+		for (int i = 0; i < wallMatrix.length; i++) {
 			for(int j=0; j<wallMatrix[i].length; j++){
-				Wall wall = wallMatrix[i][j];
-				if(wall!=null){
-					wall.render(g);
-				}
+				wallMatrix[i][j].render(g, offset);
 			}
+			
 		}
 	}
 	
